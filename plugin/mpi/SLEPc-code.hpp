@@ -105,7 +105,7 @@ class eigensolver : public OneOperator {
                 Expression B;
                 const OneOperator* codeA, *codeB;
                 const int c;
-                static const int n_name_param = 10;
+                static const int n_name_param = 11;
                 static basicAC_F0::name_and_type name_param[];
                 Expression nargs[n_name_param];
                 E_eigensolver(const basicAC_F0& args, int d) : A(0), B(0), codeA(0), codeB(0), c(d) {
@@ -158,6 +158,7 @@ basicAC_F0::name_and_type eigensolver<Type, K, SType>::E_eigensolver::name_param
     {!std::is_same<SType, SVD>::value ? "schurPreconditioner" : "rvectors", !std::is_same<SType, SVD>::value ? &typeid(KN<Matrice_Creuse<HPDDM::upscaled_type<PetscScalar>>>*) : &typeid(FEbaseArrayKn<K>*)},
     {!std::is_same<SType, SVD>::value ? "schurList" : "rarray", !std::is_same<SType, SVD>::value ? &typeid(KN<double>*) : &typeid(KNM<K>*)},
     {"deflation", &typeid(KNM<PetscScalar>*)},
+    {"transformation", &typeid(Type*)},
 };
 template<class Type, class K, class SType>
 struct _n_User {
@@ -325,6 +326,21 @@ AnyType eigensolver<Type, K, SType>::E_eigensolver::operator()(Stack stack) cons
             }
             else {
                 PEPSetFromOptions(pep);
+                Type* ptTransform = nargs[10] ? GetAny<Type*>((*nargs[10])(stack)) : NULL;
+                if(ptTransform) {
+                    ST st;
+                    PEPGetST(pep, &st);
+                    STGetKSP(st, &empty);
+                    if(!ptTransform->_ksp) {
+                        KSPCreate(PetscObjectComm((PetscObject)pep), &ptTransform->_ksp);
+                        const char *prefix;
+                        KSPGetOptionsPrefix(empty, &prefix);
+                        KSPSetOptionsPrefix(ptTransform->_ksp, prefix);
+                        KSPSetFromOptions(ptTransform->_ksp);
+                    }
+                    PetscObjectReference((PetscObject)empty);
+                    STSetKSP(st, ptTransform->_ksp);
+                }
                 PEPSetUp(pep);
             }
             FEbaseArrayKn<K>* eigenvectors = nargs[3] ? GetAny<FEbaseArrayKn<K>*>((*nargs[3])(stack)) : nullptr;
@@ -523,8 +539,15 @@ AnyType eigensolver<Type, K, SType>::E_eigensolver::operator()(Stack stack) cons
                 SVDDestroy(&svd);
             else if(std::is_same<SType, NEP>::value)
                 NEPDestroy(&nep);
-            else
+            else {
+                if(empty) {
+                    ST st;
+                    PEPGetST(pep, &st);
+                    STSetKSP(st, empty);
+                    PetscObjectDereference((PetscObject)empty);
+                }
                 PEPDestroy(&pep);
+            }
             return static_cast<long>(nconv);
         }
         else

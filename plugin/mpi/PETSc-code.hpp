@@ -2223,7 +2223,7 @@ namespace PETSc {
     }
     long FS = nargs[9] ? GetAny< long >((*nargs[9])(stack)) : -1;
     KSP ksp = nullptr;
-    if (ptA && ptA->_petsc) {
+    if (ptA->_petsc) {
       {
         long bs = nargs[16] ? GetAny< long >((*nargs[16])(stack)) : -1;
         if(bs >= 1)
@@ -2549,6 +2549,8 @@ namespace PETSc {
         }
       }
     }
+    else if(ptA->_ksp)
+        KSPSetFromOptions(ptA->_ksp);
     if(nargs[18] && GetAny< bool >((*nargs[18])(stack)))
         KSPSetUp(ksp);
     return 0L;
