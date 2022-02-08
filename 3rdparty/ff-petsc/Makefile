@@ -150,8 +150,8 @@ all-local:
 	@echo "	make petsc-slepc "
 
 DIRPKG=../pkg
-VERSION=3.16.3
-VERSION_SLEPC=3.16.1
+VERSION=3.016.4
+VERSION_SLEPC=3.016.2
 PACKAGE=../pkg/petsc-$(VERSION).tar.gz
 SRCDIR=petsc-$(VERSION)
 MPI_DIR:=$(shell dirname $(MPI_INC_DIR))
